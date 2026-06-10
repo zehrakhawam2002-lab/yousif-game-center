@@ -107,7 +107,7 @@ export default function OtherPage() {
           <span style={{ fontSize: '22px' }}>🎮</span>
           <div><div style={{ fontSize: '14px', fontWeight: '700', color: '#fff' }}>Yousif GC</div><div style={{ fontSize: '11px', color: '#8892a4' }}>Game Center</div></div>
         </div>
-        {[['MAIN',0,5],['REPORTS',5,7],['SYSTEM',7,10]].map(([sec,from,to]) => (
+        {[['MAIN',0,6],['REPORTS',6,8],['SYSTEM',8,11]].map(([sec,from,to]) => (
           <div key={sec}>
             <div style={{ fontSize: '10px', fontWeight: '700', letterSpacing: '.12em', color: '#4a5568', padding: '.75rem 1.1rem .3rem', textTransform: 'uppercase' }}>{sec}</div>
             {NAV.slice(from,to).map(item => (

@@ -6,7 +6,6 @@ import { supabase } from '@/lib/supabase'
 const NAV = [
   { icon: '📊', label: 'Dashboard', path: '/dashboard' },
   { icon: '🎮', label: 'PS Stations', path: '/stations' },
-  { icon: '🖥️', label: 'PC Stations', path: '/pc' },
   { icon: '🎱', label: 'Billiards', path: '/billiards' },
   { icon: '🕹️', label: 'Other Games', path: '/other' },
   { icon: '🧾', label: 'Orders', path: '/orders' },
@@ -20,7 +19,7 @@ const NAV = [
 export default function SettingsPage() {
   const router = useRouter()
   const [user, setUser] = useState(null)
-  const [form, setForm] = useState({ center_name: '', center_code: '', branch_name: '', currency: 'IQD', price_ps: 3000, price_pc: 2500, price_billiards_single: 4000, price_billiards_double: 6000, price_pool: 5000, price_foosball: 3000, price_chips: 3000 })
+  const [form, setForm] = useState({ center_name: '', center_code: '', branch_name: '', currency: 'IQD', price_ps: 3000, price_billiards_single: 4000, price_billiards_double: 6000, price_pool: 5000, price_foosball: 3000, price_chips: 3000 })
   const [passForm, setPassForm] = useState({ newPass: '', confirmPass: '' })
   const [saved, setSaved] = useState(false)
   const [passError, setPassError] = useState('')
@@ -49,7 +48,6 @@ export default function SettingsPage() {
       branch_name: form.branch_name,
       currency: form.currency,
       price_ps: parseInt(form.price_ps),
-      price_pc: parseInt(form.price_pc),
       price_billiards_single: parseInt(form.price_billiards_single),
       price_billiards_double: parseInt(form.price_billiards_double),
       price_pool: parseInt(form.price_pool),
@@ -147,16 +145,15 @@ export default function SettingsPage() {
 
           <Section title="🏢 Center Information">
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 12px' }}>
-              <Field label="Center Name" value={form.center_name || ''} onChange={e => setForm({...form, center_name: e.target.value})} placeholder="Yousif Game Center" />
-              <Field label="Center Code" value={form.center_code || ''} onChange={e => setForm({...form, center_code: e.target.value})} placeholder="YGC-2024" />
-              <Field label="Branch Name" value={form.branch_name || ''} onChange={e => setForm({...form, branch_name: e.target.value})} placeholder="Main Hall" />
-              <Field label="Currency" value={form.currency || ''} onChange={e => setForm({...form, currency: e.target.value})} placeholder="IQD" />
+              <Field label="Center Name" value={form.center_name} onChange={e => setForm({...form, center_name: e.target.value})} placeholder="Yousif Game Center" />
+              <Field label="Center Code" value={form.center_code} onChange={e => setForm({...form, center_code: e.target.value})} placeholder="YGC-2024" />
+              <Field label="Branch Name" value={form.branch_name} onChange={e => setForm({...form, branch_name: e.target.value})} placeholder="Main Hall" />
+              <Field label="Currency" value={form.currency} onChange={e => setForm({...form, currency: e.target.value})} placeholder="IQD" />
             </div>
           </Section>
 
-          <Section title="💰 Prices per Hour (IQD)">
+          <Section title="💰 Prices per Hour">
             <PriceRow label="🎮 PS Station" sub="Per hour per station" valueKey="price_ps" />
-            <PriceRow label="🖥️ PC Station" sub="Per hour per PC" valueKey="price_pc" />
             <PriceRow label="🎱 Billiards — Single" sub="1 player per hour" valueKey="price_billiards_single" />
             <PriceRow label="🎱 Billiards — Double" sub="2 players per hour" valueKey="price_billiards_double" />
             <PriceRow label="🎯 Billiard Table" sub="Per hour" valueKey="price_pool" />
