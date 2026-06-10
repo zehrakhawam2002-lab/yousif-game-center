@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabase'
 const NAV = [
   { icon: '📊', label: 'Dashboard', path: '/dashboard' },
   { icon: '🎮', label: 'PS Stations', path: '/stations' },
+  { icon: '🖥️', label: 'PC Stations', path: '/pc' },
   { icon: '🎱', label: 'Billiards', path: '/billiards' },
   { icon: '🕹️', label: 'Other Games', path: '/other', active: true },
   { icon: '🧾', label: 'Orders', path: '/orders' },
