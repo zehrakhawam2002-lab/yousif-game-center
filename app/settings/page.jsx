@@ -7,7 +7,6 @@ const NAV = [
   { icon: '📊', label: 'Dashboard', path: '/dashboard' },
   { icon: '🎮', label: 'PS Stations', path: '/stations' },
   { icon: '🖥️', label: 'PC Stations', path: '/pc' },
-  { icon: '🖥️', label: 'PC Stations', path: '/pc' },
   { icon: '🎱', label: 'Billiards', path: '/billiards' },
   { icon: '🕹️', label: 'Other Games', path: '/other' },
   { icon: '🧾', label: 'Orders', path: '/orders' },
