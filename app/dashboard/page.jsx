@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase'
 
 const NAV = [
   { icon: '📊', label: 'Dashboard', path: '/dashboard', active: true },
+  { icon: '🔴', label: 'Active Sessions', path: '/active' },
   { icon: '🎮', label: 'PS Stations', path: '/stations' },
   { icon: '🖥️', label: 'PC Stations', path: '/pc' },
   { icon: '🎱', label: 'Billiards', path: '/billiards' },
@@ -59,9 +60,9 @@ export default function Dashboard() {
       <nav style={{ width: sidebarOpen?'235px':'0', background: '#1a1a2e', flexShrink: 0, display: 'flex', flexDirection: 'column', padding: sidebarOpen?'.75rem 0':'0', overflow: 'hidden', transition: 'width .2s', position: 'fixed', height: '100vh', zIndex: 100 }}>
         <div style={{ padding: '0.5rem 1.1rem 1rem', borderBottom: '1px solid #ffffff0f', marginBottom: '.5rem', display: 'flex', alignItems: 'center', gap: '10px' }}>
           <span style={{ fontSize: '22px' }}>🎮</span>
-          <div><div style={{ fontSize: '14px', fontWeight: '700', color: '#fff', whiteSpace: 'nowrap' }}>Yousif GC</div><div style={{ fontSize: '11px', color: '#8892a4', whiteSpace: 'nowrap' }}>Game Center</div></div>
+          <div><div style={{ fontSize: '14px', fontWeight: '700', color: '#fff', whiteSpace: 'nowrap' }}>Novixiq GC</div><div style={{ fontSize: '11px', color: '#8892a4', whiteSpace: 'nowrap' }}>Game Center</div></div>
         </div>
-        {[['MAIN',0,6],['REPORTS',6,8],['SYSTEM',8,11]].map(([sec,from,to]) => (
+        {[['MAIN',0,7],['REPORTS',7,9],['SYSTEM',9,12]].map(([sec,from,to]) => (
           <div key={sec}>
             <div style={{ fontSize: '10px', fontWeight: '700', letterSpacing: '.12em', color: '#4a5568', padding: '.75rem 1.1rem .3rem', textTransform: 'uppercase' }}>{sec}</div>
             {NAV.slice(from,to).map(item => (
@@ -80,7 +81,7 @@ export default function Dashboard() {
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '.75rem 1.25rem', background: '#fff', borderBottom: '1px solid #e2e8f0', position: 'sticky', top: 0, zIndex: 90 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <button onClick={() => setSidebarOpen(!sidebarOpen)} style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', color: '#64748b' }}>☰</button>
-            <span style={{ fontSize: '14px', fontWeight: '700', color: '#1e293b' }}>🎮 Yousif Game Center</span>
+            <span style={{ fontSize: '14px', fontWeight: '700', color: '#1e293b' }}>🎮 Novixiq Game Center System</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <div style={{ fontSize: '12px', color: '#64748b', background: '#f0f2f5', border: '1px solid #e2e8f0', borderRadius: '20px', padding: '4px 12px', fontWeight: '500' }}>Main Hall</div>

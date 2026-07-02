@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase'
 
 const NAV = [
   { icon: '📊', label: 'Dashboard', path: '/dashboard' },
+  { icon: '🔴', label: 'Active Sessions', path: '/active' },
   { icon: '🎮', label: 'PS Stations', path: '/stations' },
   { icon: '🖥️', label: 'PC Stations', path: '/pc' },
   { icon: '🎱', label: 'Billiards', path: '/billiards' },
@@ -23,7 +24,7 @@ export default function OrdersPage() {
   const router = useRouter()
   const [user, setUser] = useState(null)
   const [menuItems, setMenuItems] = useState([])
-  const [settings, setSettings] = useState({ currency: 'IQD', center_name: 'Yousif Game Center' })
+  const [settings, setSettings] = useState({ currency: 'IQD', center_name: 'Novixiq Game Center System' })
   const [orderItems, setOrderItems] = useState([])
   const [discount, setDiscount] = useState(0)
   const [saved, setSaved] = useState(false)
@@ -87,9 +88,9 @@ export default function OrdersPage() {
       <nav style={{ width: '235px', background: '#1a1a2e', flexShrink: 0, display: 'flex', flexDirection: 'column', padding: '.75rem 0', position: 'fixed', height: '100vh', zIndex: 100, overflowY: 'auto' }}>
         <div style={{ padding: '0.5rem 1.1rem 1rem', borderBottom: '1px solid #ffffff0f', marginBottom: '.5rem', display: 'flex', alignItems: 'center', gap: '10px' }}>
           <span style={{ fontSize: '22px' }}>🎮</span>
-          <div><div style={{ fontSize: '14px', fontWeight: '700', color: '#fff' }}>Yousif GC</div><div style={{ fontSize: '11px', color: '#8892a4' }}>Game Center</div></div>
+          <div><div style={{ fontSize: '14px', fontWeight: '700', color: '#fff' }}>Novixiq GC</div><div style={{ fontSize: '11px', color: '#8892a4' }}>Game Center</div></div>
         </div>
-        {[['MAIN',0,6],['REPORTS',6,8],['SYSTEM',8,11]].map(([sec,from,to]) => (
+        {[['MAIN',0,7],['REPORTS',7,9],['SYSTEM',9,12]].map(([sec,from,to]) => (
           <div key={sec}>
             <div style={{ fontSize: '10px', fontWeight: '700', letterSpacing: '.12em', color: '#4a5568', padding: '.75rem 1.1rem .3rem', textTransform: 'uppercase' }}>{sec}</div>
             {NAV.slice(from,to).map(item => (
@@ -107,7 +108,7 @@ export default function OrdersPage() {
 
       <div style={{ marginLeft: '235px', flex: 1 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '.75rem 1.25rem', background: '#fff', borderBottom: '1px solid #e2e8f0', position: 'sticky', top: 0, zIndex: 90 }}>
-          <span style={{ fontSize: '14px', fontWeight: '700', color: '#1e293b' }}>🎮 Yousif Game Center</span>
+          <span style={{ fontSize: '14px', fontWeight: '700', color: '#1e293b' }}>🎮 Novixiq Game Center System</span>
           <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
             <div style={{ fontSize: '12px', color: '#64748b', background: '#f0f2f5', border: '1px solid #e2e8f0', borderRadius: '20px', padding: '4px 12px' }}>Main Hall</div>
             <button onClick={signOut} style={{ fontSize: '12px', color: '#991b1b', cursor: 'pointer', padding: '5px 10px', border: '1px solid #fee2e2', borderRadius: '8px', background: '#fee2e2', fontWeight: '600' }}>✕ Sign out</button>

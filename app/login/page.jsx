@@ -38,7 +38,7 @@ export default function LoginPage() {
     <div style={{minHeight:'100vh',background:'#1a1a2e',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:'1rem'}}>
       <div style={{textAlign:'center',marginBottom:'2.5rem'}}>
         <div style={{fontSize:'52px',marginBottom:'12px'}}>🎮</div>
-        <h1 style={{fontSize:'26px',fontWeight:'700',color:'#fff'}}>Yousif Game Center</h1>
+        <h1 style={{fontSize:'26px',fontWeight:'700',color:'#fff'}}>Novixiq Game Center System</h1>
         <p style={{color:'#8892a4',fontSize:'14px',marginTop:'4px'}}>Select your language</p>
       </div>
       {[['en','🇬🇧','English'],['ar','🇮🇶','العربية'],['ku','🏔','کوردی']].map(([l,flag,label])=>(
@@ -65,7 +65,7 @@ export default function LoginPage() {
           <>
             <div style={{marginBottom:'1rem'}}>
               <label style={{fontSize:'12px',color:'#64748b',fontWeight:'700',marginBottom:'5px',display:'block',textTransform:'uppercase'}}>🏢 Center Code</label>
-              <input value={code} onChange={e=>setCode(e.target.value)} onKeyDown={e=>e.key==='Enter'&&checkCode()} placeholder="e.g. YGC-2024" style={{width:'100%',padding:'10px 11px',border:'1px solid #cbd5e1',borderRadius:'10px',fontSize:'14px',background:'#f0f2f5',color:'#1e293b',boxSizing:'border-box'}}/>
+              <input value={code} onChange={e=>setCode(e.target.value)} onKeyDown={e=>e.key==='Enter'&&checkCode()} placeholder="e.g. NGC-2024" style={{width:'100%',padding:'10px 11px',border:'1px solid #cbd5e1',borderRadius:'10px',fontSize:'14px',background:'#f0f2f5',color:'#1e293b',boxSizing:'border-box'}}/>
               <div style={{fontSize:'11px',color:'#94a3b8',marginTop:'4px'}}>Leave empty if you are a platform admin</div>
             </div>
             <button onClick={checkCode} style={{width:'100%',background:'#6366f1',color:'#fff',border:'none',borderRadius:'10px',padding:'11px',fontSize:'14px',fontWeight:'700',cursor:'pointer'}}>Continue →</button>

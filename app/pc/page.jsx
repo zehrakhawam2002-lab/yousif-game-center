@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase'
 
 const NAV = [
   { icon: '📊', label: 'Dashboard', path: '/dashboard' },
+  { icon: '🔴', label: 'Active Sessions', path: '/active' },
   { icon: '🎮', label: 'PS Stations', path: '/stations' },
   { icon: '🖥️', label: 'PC Stations', path: '/pc', active: true },
   { icon: '🎱', label: 'Billiards', path: '/billiards' },
@@ -30,6 +31,7 @@ export default function PCPage() {
   const [customer, setCustomer] = useState('')
   const [discount, setDiscount] = useState(0)
   const [sessionItems, setSessionItems] = useState([])
+  const [endItems, setEndItems] = useState([])
   const [tick, setTick] = useState(0)
 
   useEffect(() => {
@@ -61,11 +63,35 @@ export default function PCPage() {
     setShowSessionModal(null); setCustomer(''); loadData()
   }
 
-  const addItem = (item) => setSessionItems(prev => {
-    const ex = prev.find(i => i.id === item.id)
-    if (ex) return prev.map(i => i.id === item.id ? { ...i, qty: i.qty + 1 } : i)
-    return [...prev, { ...item, qty: 1 }]
-  })
+  const refreshEndItems = async (sessionId) => {
+    const { data } = await supabase.from('session_items').select('*').eq('session_id', sessionId)
+    setEndItems(data || [])
+  }
+
+  const addItem = async (item) => {
+    if (!showEndModal) return
+    const session = getActiveSession(showEndModal)
+    if (!session) return
+    const existing = endItems.find(i => i.menu_item_id === item.id)
+    if (existing) {
+      await supabase.from('session_items').update({ quantity: existing.quantity + 1 }).eq('id', existing.id)
+    } else {
+      await supabase.from('session_items').insert({ session_id: session.id, menu_item_id: item.id, name: item.name, price: item.price, quantity: 1 })
+    }
+    refreshEndItems(session.id)
+  }
+
+  const removeEndItem = async (item) => {
+    if (item.quantity > 1) {
+      await supabase.from('session_items').update({ quantity: item.quantity - 1 }).eq('id', item.id)
+    } else {
+      await supabase.from('session_items').delete().eq('id', item.id)
+    }
+    if (showEndModal) {
+      const session = getActiveSession(showEndModal)
+      if (session) refreshEndItems(session.id)
+    }
+  }
 
   const endSession = async () => {
     if (!showEndModal) return
@@ -73,12 +99,11 @@ export default function PCPage() {
     if (!session) return
     const elapsed = getElapsed(session)
     const gc = (elapsed / 3600000) * settings.price_pc
-    const it = sessionItems.reduce((a, i) => a + i.price * i.qty, 0)
+    const it = endItems.reduce((a, i) => a + i.price * i.quantity, 0)
     const da = gc * (discount / 100), total = gc - da + it
     await supabase.from('sessions').update({ ended_at: new Date().toISOString(), duration_minutes: elapsed/60000, gaming_cost: gc, orders_total: it, discount_percent: discount, discount_amount: da, total, status: 'ended' }).eq('id', session.id)
-    if (sessionItems.length) await supabase.from('session_items').insert(sessionItems.map(i => ({ session_id: session.id, menu_item_id: i.id, name: i.name, price: i.price, quantity: i.qty })))
     await supabase.from('stations').update({ total_hours: (showEndModal.total_hours||0) + elapsed/3600000, total_income: (showEndModal.total_income||0) + total }).eq('id', showEndModal.id)
-    setShowEndModal(null); setSessionItems([]); setDiscount(0); loadData()
+    setShowEndModal(null); setEndItems([]); setDiscount(0); loadData()
   }
 
   const addStation = async () => {
@@ -105,7 +130,7 @@ export default function PCPage() {
           <span style={{ fontSize: '22px' }}>🎮</span>
           <div><div style={{ fontSize: '14px', fontWeight: '700', color: '#fff' }}>Yousif GC</div><div style={{ fontSize: '11px', color: '#8892a4' }}>Game Center</div></div>
         </div>
-        {[['MAIN',0,6],['REPORTS',6,8],['SYSTEM',8,11]].map(([sec,from,to]) => (
+        {[['MAIN',0,7],['REPORTS',7,9],['SYSTEM',9,12]].map(([sec,from,to]) => (
           <div key={sec}>
             <div style={{ fontSize: '10px', fontWeight: '700', letterSpacing: '.12em', color: '#4a5568', padding: '.75rem 1.1rem .3rem', textTransform: 'uppercase' }}>{sec}</div>
             {NAV.slice(from,to).map(item => (
@@ -163,7 +188,7 @@ export default function PCPage() {
                   <div style={{ display: 'flex', gap: '5px' }}>
                     {!session
                       ? <button onClick={() => { setShowSessionModal(st); setCustomer('') }} style={{ flex: 1, background: '#d1fae5', color: '#065f46', border: '1px solid #6ee7b7', borderRadius: '8px', padding: '6px', fontSize: '12px', cursor: 'pointer', fontWeight: '600' }}>▶ Start</button>
-                      : <button onClick={() => { setShowEndModal(st); setSessionItems([]); setDiscount(0) }} style={{ flex: 1, background: '#fee2e2', color: '#991b1b', border: '1px solid #fca5a5', borderRadius: '8px', padding: '6px', fontSize: '12px', cursor: 'pointer', fontWeight: '600' }}>■ End Session</button>
+                      : <button onClick={() => { setShowEndModal(st); setDiscount(0); refreshEndItems(getActiveSession(st)?.id) }} style={{ flex: 1, background: '#fee2e2', color: '#991b1b', border: '1px solid #fca5a5', borderRadius: '8px', padding: '6px', fontSize: '12px', cursor: 'pointer', fontWeight: '600' }}>■ End Session</button>
                     }
                     <button onClick={() => deleteStation(st.id)} style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '6px 8px', fontSize: '12px', cursor: 'pointer' }}>🗑</button>
                   </div>
@@ -221,7 +246,7 @@ export default function PCPage() {
 
       {showEndModal && (() => {
         const session = getActiveSession(showEndModal), elapsed = getElapsed(session)
-        const gc = (elapsed/3600000)*settings.price_pc, it = sessionItems.reduce((a,i)=>a+i.price*i.qty,0), da = gc*(discount/100), total = gc-da+it
+        const gc = (elapsed/3600000)*settings.price_pc, it = endItems.reduce((a,i)=>a+i.price*i.quantity,0), da = gc*(discount/100), total = gc-da+it
         return (
           <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.5)', zIndex: 999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
             <div style={{ background: '#fff', borderRadius: '16px', padding: '1.5rem', width: '100%', maxWidth: '460px', maxHeight: '90vh', overflowY: 'auto' }}>
@@ -244,10 +269,11 @@ export default function PCPage() {
                   </div>
                 ))}
               </div>
-              {sessionItems.length > 0 && sessionItems.map(i => (
+              {endItems.length > 0 && endItems.map(i => (
                 <div key={i.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 8px', background: '#f8fafc', borderRadius: '8px', marginBottom: '5px' }}>
-                  <span style={{ flex: 1, fontSize: '13px', fontWeight: '600' }}>{i.name} ×{i.qty}</span>
-                  <span style={{ fontSize: '13px', fontWeight: '700' }}>{fmtIQD(i.price*i.qty)}</span>
+                  <span style={{ flex: 1, fontSize: '13px', fontWeight: '600' }}>{i.name} ×{i.quantity}</span>
+                  <span style={{ fontSize: '13px', fontWeight: '700' }}>{fmtIQD(i.price*i.quantity)}</span>
+                  <button onClick={() => removeEndItem(i)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', fontSize: '13px' }}>✕</button>
                 </div>
               ))}
               <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: '8px', marginBottom: '10px' }}>

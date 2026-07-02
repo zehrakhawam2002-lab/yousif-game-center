@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase'
 
 const NAV = [
   { icon: '📊', label: 'Dashboard', path: '/dashboard' },
+  { icon: '🔴', label: 'Active Sessions', path: '/active' },
   { icon: '🎮', label: 'PS Stations', path: '/stations', active: true },
   { icon: '🖥️', label: 'PC Stations', path: '/pc' },
   { icon: '🎱', label: 'Billiards', path: '/billiards' },
@@ -30,6 +31,7 @@ export default function StationsPage() {
   const [customer, setCustomer] = useState('')
   const [discount, setDiscount] = useState(0)
   const [sessionItems, setSessionItems] = useState([])
+  const [endItems, setEndItems] = useState([])
   const [tick, setTick] = useState(0)
 
   useEffect(() => {
@@ -61,7 +63,35 @@ export default function StationsPage() {
     setShowSessionModal(null); setCustomer(''); loadData()
   }
 
-  const addItem = (item) => setSessionItems(prev => { const ex=prev.find(i=>i.id===item.id); if(ex) return prev.map(i=>i.id===item.id?{...i,qty:i.qty+1}:i); return [...prev,{...item,qty:1}] })
+  const refreshEndItems = async (sessionId) => {
+    const { data } = await supabase.from('session_items').select('*').eq('session_id', sessionId)
+    setEndItems(data || [])
+  }
+
+  const addItem = async (item) => {
+    if (!showEndModal) return
+    const session = getActiveSession(showEndModal)
+    if (!session) return
+    const existing = endItems.find(i => i.menu_item_id === item.id)
+    if (existing) {
+      await supabase.from('session_items').update({ quantity: existing.quantity + 1 }).eq('id', existing.id)
+    } else {
+      await supabase.from('session_items').insert({ session_id: session.id, menu_item_id: item.id, name: item.name, price: item.price, quantity: 1 })
+    }
+    refreshEndItems(session.id)
+  }
+
+  const removeEndItem = async (item) => {
+    if (item.quantity > 1) {
+      await supabase.from('session_items').update({ quantity: item.quantity - 1 }).eq('id', item.id)
+    } else {
+      await supabase.from('session_items').delete().eq('id', item.id)
+    }
+    if (showEndModal) {
+      const session = getActiveSession(showEndModal)
+      if (session) refreshEndItems(session.id)
+    }
+  }
 
   const endSession = async () => {
     if (!showEndModal) return
@@ -69,12 +99,11 @@ export default function StationsPage() {
     if (!session) return
     const elapsed = getElapsed(session)
     const gc = (elapsed/3600000)*settings.price_ps
-    const it = sessionItems.reduce((a,i)=>a+i.price*i.qty,0)
+    const it = endItems.reduce((a,i)=>a+i.price*i.quantity,0)
     const da = gc*(discount/100), total = gc-da+it
     await supabase.from('sessions').update({ ended_at: new Date().toISOString(), duration_minutes: elapsed/60000, gaming_cost: gc, orders_total: it, discount_percent: discount, discount_amount: da, total, status: 'ended' }).eq('id', session.id)
-    if (sessionItems.length) await supabase.from('session_items').insert(sessionItems.map(i=>({session_id:session.id,menu_item_id:i.id,name:i.name,price:i.price,quantity:i.qty})))
     await supabase.from('stations').update({ total_hours: (showEndModal.total_hours||0)+elapsed/3600000, total_income: (showEndModal.total_income||0)+total }).eq('id', showEndModal.id)
-    setShowEndModal(null); setSessionItems([]); setDiscount(0); loadData()
+    setShowEndModal(null); setEndItems([]); setDiscount(0); loadData()
   }
 
   const addStation = async () => { if (!newName) return; await supabase.from('stations').insert({ name: newName, type: 'ps' }); setNewName(''); setShowAddModal(false); loadData() }
@@ -88,7 +117,7 @@ export default function StationsPage() {
           <span style={{ fontSize: '22px' }}>🎮</span>
           <div><div style={{ fontSize: '14px', fontWeight: '700', color: '#fff' }}>Yousif GC</div><div style={{ fontSize: '11px', color: '#8892a4' }}>Game Center</div></div>
         </div>
-        {[['MAIN',0,6],['REPORTS',6,8],['SYSTEM',8,11]].map(([sec,from,to]) => (
+        {[['MAIN',0,7],['REPORTS',7,9],['SYSTEM',9,12]].map(([sec,from,to]) => (
           <div key={sec}>
             <div style={{ fontSize: '10px', fontWeight: '700', letterSpacing: '.12em', color: '#4a5568', padding: '.75rem 1.1rem .3rem', textTransform: 'uppercase' }}>{sec}</div>
             {NAV.slice(from,to).map(item => (
@@ -131,7 +160,7 @@ export default function StationsPage() {
                   <div style={{ fontSize: session?'28px':'16px', fontWeight: session?'800':'400', color: session?'#1e293b':'#94a3b8', margin: '6px 0 2px', fontVariantNumeric: 'tabular-nums' }}>{session?fmtTimer(elapsed):'Idle'}</div>
                   <div style={{ fontSize: '11px', color: '#64748b', marginBottom: '10px' }}>{fmtIQD(settings.price_ps)}/hr {session?`• ${fmtIQD(cost)}`:''}</div>
                   <div style={{ display: 'flex', gap: '5px' }}>
-                    {!session?<button onClick={()=>{setShowSessionModal(st);setCustomer('')}} style={{ flex:1,background:'#d1fae5',color:'#065f46',border:'1px solid #6ee7b7',borderRadius:'8px',padding:'6px',fontSize:'12px',cursor:'pointer',fontWeight:'600' }}>▶ Start</button>:<button onClick={()=>setShowEndModal(st)} style={{ flex:1,background:'#fee2e2',color:'#991b1b',border:'1px solid #fca5a5',borderRadius:'8px',padding:'6px',fontSize:'12px',cursor:'pointer',fontWeight:'600' }}>■ End Session</button>}
+                    {!session?<button onClick={()=>{setShowSessionModal(st);setCustomer('')}} style={{ flex:1,background:'#d1fae5',color:'#065f46',border:'1px solid #6ee7b7',borderRadius:'8px',padding:'6px',fontSize:'12px',cursor:'pointer',fontWeight:'600' }}>▶ Start</button>:<button onClick={()=>{setShowEndModal(st);setDiscount(0);const sess=getActiveSession(st);if(sess)refreshEndItems(sess.id)}} style={{ flex:1,background:'#fee2e2',color:'#991b1b',border:'1px solid #fca5a5',borderRadius:'8px',padding:'6px',fontSize:'12px',cursor:'pointer',fontWeight:'600' }}>■ End Session</button>}
                     <button onClick={()=>deleteStation(st.id)} style={{ background:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:'8px',padding:'6px 8px',fontSize:'12px',cursor:'pointer' }}>🗑</button>
                   </div>
                 </div>
@@ -143,8 +172,8 @@ export default function StationsPage() {
       {showAddModal&&<div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.5)',zIndex:999,display:'flex',alignItems:'center',justifyContent:'center',padding:'1rem'}}><div style={{background:'#fff',borderRadius:'16px',padding:'1.5rem',width:'100%',maxWidth:'400px'}}><div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'1.25rem'}}><span style={{fontSize:'15px',fontWeight:'700',color:'#1e293b'}}>Add PS Station</span><button onClick={()=>setShowAddModal(false)} style={{background:'#f0f2f5',border:'1px solid #e2e8f0',borderRadius:'8px',width:'30px',height:'30px',cursor:'pointer'}}>✕</button></div><div style={{marginBottom:'1rem'}}><label style={{fontSize:'12px',color:'#64748b',fontWeight:'700',marginBottom:'5px',display:'block',textTransform:'uppercase'}}>Station Name</label><input value={newName} onChange={e=>setNewName(e.target.value)} placeholder="e.g. PS5 #4" style={{width:'100%',padding:'9px 11px',border:'1px solid #cbd5e1',borderRadius:'9px',fontSize:'13px',boxSizing:'border-box'}}/></div><div style={{display:'flex',gap:'8px',justifyContent:'flex-end'}}><button onClick={()=>setShowAddModal(false)} style={{padding:'6px 14px',border:'1px solid #e2e8f0',borderRadius:'8px',background:'#fff',cursor:'pointer',fontSize:'13px'}}>Cancel</button><button onClick={addStation} style={{padding:'6px 14px',background:'#6366f1',color:'#fff',border:'none',borderRadius:'8px',cursor:'pointer',fontSize:'13px',fontWeight:'600'}}>✓ Add</button></div></div></div>}
       {showSessionModal&&<div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.5)',zIndex:999,display:'flex',alignItems:'center',justifyContent:'center',padding:'1rem'}}><div style={{background:'#fff',borderRadius:'16px',padding:'1.5rem',width:'100%',maxWidth:'400px'}}><div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'1.25rem'}}><span style={{fontSize:'15px',fontWeight:'700',color:'#1e293b'}}>Start — {showSessionModal.name}</span><button onClick={()=>setShowSessionModal(null)} style={{background:'#f0f2f5',border:'1px solid #e2e8f0',borderRadius:'8px',width:'30px',height:'30px',cursor:'pointer'}}>✕</button></div><div style={{background:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:'10px',padding:'12px 14px',marginBottom:'1rem',display:'flex',alignItems:'center',gap:'12px'}}><span style={{fontSize:'28px'}}>💰</span><div><div style={{fontSize:'11px',fontWeight:'700',color:'#64748b',textTransform:'uppercase'}}>Rate</div><div style={{fontSize:'18px',fontWeight:'800',color:'#1e293b'}}>{fmtIQD(settings.price_ps)}<span style={{fontSize:'12px',fontWeight:'400',color:'#64748b'}}>/hr</span></div></div></div><div style={{marginBottom:'1rem'}}><label style={{fontSize:'12px',color:'#64748b',fontWeight:'700',marginBottom:'5px',display:'block',textTransform:'uppercase'}}>Customer Name (optional)</label><input value={customer} onChange={e=>setCustomer(e.target.value)} placeholder="e.g. Ahmed" style={{width:'100%',padding:'9px 11px',border:'1px solid #cbd5e1',borderRadius:'9px',fontSize:'13px',boxSizing:'border-box'}}/></div><div style={{display:'flex',gap:'8px',justifyContent:'flex-end'}}><button onClick={()=>setShowSessionModal(null)} style={{padding:'6px 14px',border:'1px solid #e2e8f0',borderRadius:'8px',background:'#fff',cursor:'pointer',fontSize:'13px'}}>Cancel</button><button onClick={startSession} style={{padding:'6px 14px',background:'#10b981',color:'#fff',border:'none',borderRadius:'8px',cursor:'pointer',fontSize:'13px',fontWeight:'600'}}>▶ Start Session</button></div></div></div>}
       {showEndModal&&(()=>{
-        const session=getActiveSession(showEndModal),elapsed=getElapsed(session),gc=(elapsed/3600000)*settings.price_ps,it=sessionItems.reduce((a,i)=>a+i.price*i.qty,0),da=gc*(discount/100),total=gc-da+it
-        return <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.5)',zIndex:999,display:'flex',alignItems:'center',justifyContent:'center',padding:'1rem'}}><div style={{background:'#fff',borderRadius:'16px',padding:'1.5rem',width:'100%',maxWidth:'460px',maxHeight:'90vh',overflowY:'auto'}}><div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'1.25rem'}}><span style={{fontSize:'15px',fontWeight:'700',color:'#1e293b'}}>End Session — {showEndModal.name}</span><button onClick={()=>setShowEndModal(null)} style={{background:'#f0f2f5',border:'1px solid #e2e8f0',borderRadius:'8px',width:'30px',height:'30px',cursor:'pointer'}}>✕</button></div><div style={{background:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:'10px',padding:'12px 14px',marginBottom:'1rem'}}><div style={{fontSize:'11px',fontWeight:'700',color:'#64748b',textTransform:'uppercase',marginBottom:'2px'}}>Duration</div><div style={{fontSize:'26px',fontWeight:'800',fontVariantNumeric:'tabular-nums',color:'#1e293b'}}>{fmtTimer(elapsed)}</div><div style={{fontSize:'12px',color:'#64748b',marginTop:'2px'}}>Gaming cost: <strong>{fmtIQD(gc)}</strong></div></div><div style={{fontSize:'12px',fontWeight:'700',color:'#64748b',textTransform:'uppercase',marginBottom:'8px'}}>Add Orders</div><div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:'8px',marginBottom:'12px'}}>{menuItems.map(m=><div key={m.id} onClick={()=>addItem(m)} style={{border:'1px solid #e2e8f0',borderRadius:'10px',padding:'10px 8px',textAlign:'center',cursor:'pointer',background:'#fff'}}><div style={{fontSize:'20px',marginBottom:'4px'}}>{{drink:'🥤',food:'🍿',hookah:'💨',other:'📦'}[m.category]}</div><div style={{fontSize:'11px',color:'#1e293b',fontWeight:'600'}}>{m.name}</div><div style={{fontSize:'12px',fontWeight:'700',color:'#6366f1',marginTop:'2px'}}>{fmtIQD(m.price)}</div></div>)}</div>{sessionItems.length>0&&sessionItems.map(i=><div key={i.id} style={{display:'flex',alignItems:'center',gap:'8px',padding:'6px 8px',background:'#f8fafc',borderRadius:'8px',marginBottom:'5px'}}><span style={{flex:1,fontSize:'13px',fontWeight:'600'}}>{i.name} ×{i.qty}</span><span style={{fontSize:'13px',fontWeight:'700'}}>{fmtIQD(i.price*i.qty)}</span></div>)}<div style={{borderTop:'1px solid #e2e8f0',paddingTop:'8px',marginBottom:'10px'}}><div style={{display:'flex',justifyContent:'space-between',padding:'5px 0',fontSize:'13px'}}><span style={{color:'#64748b'}}>Gaming</span><span style={{fontWeight:'600'}}>{fmtIQD(gc)}</span></div><div style={{display:'flex',justifyContent:'space-between',padding:'5px 0',fontSize:'13px'}}><span style={{color:'#64748b'}}>Orders</span><span style={{fontWeight:'600'}}>{fmtIQD(it)}</span></div></div><div style={{background:'#fef3c7',border:'1px solid #fde68a',borderRadius:'9px',padding:'9px 11px',marginBottom:'10px'}}><div style={{fontSize:'11px',fontWeight:'700',color:'#92400e',marginBottom:'6px'}}>Discount on gaming</div><div style={{display:'flex',alignItems:'center',gap:'8px'}}><input type="number" value={discount} onChange={e=>setDiscount(Number(e.target.value))} min="0" max="100" style={{width:'65px',padding:'5px 8px',border:'1px solid #fde68a',borderRadius:'8px',fontSize:'13px'}}/><span style={{fontSize:'12px',color:'#92400e'}}>%</span><span style={{marginLeft:'auto',fontSize:'12px',color:'#92400e',fontWeight:'700'}}>-{fmtIQD(da)}</span></div></div><div style={{display:'flex',justifyContent:'space-between',alignItems:'center',borderTop:'1px solid #e2e8f0',paddingTop:'10px',marginBottom:'1rem'}}><span style={{fontSize:'15px',fontWeight:'700',color:'#1e293b'}}>Final Total</span><span style={{fontSize:'19px',fontWeight:'800',color:'#6366f1'}}>{fmtIQD(total)}</span></div><div style={{display:'flex',gap:'8px',justifyContent:'flex-end'}}><button onClick={()=>setShowEndModal(null)} style={{padding:'6px 14px',border:'1px solid #e2e8f0',borderRadius:'8px',background:'#fff',cursor:'pointer',fontSize:'13px'}}>Cancel</button><button onClick={endSession} style={{padding:'6px 14px',background:'#6366f1',color:'#fff',border:'none',borderRadius:'8px',cursor:'pointer',fontSize:'13px',fontWeight:'600'}}>✓ End Session</button></div></div></div>
+        const session=getActiveSession(showEndModal),elapsed=getElapsed(session),gc=(elapsed/3600000)*settings.price_ps,it=endItems.reduce((a,i)=>a+i.price*i.quantity,0),da=gc*(discount/100),total=gc-da+it
+        return <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.5)',zIndex:999,display:'flex',alignItems:'center',justifyContent:'center',padding:'1rem'}}><div style={{background:'#fff',borderRadius:'16px',padding:'1.5rem',width:'100%',maxWidth:'460px',maxHeight:'90vh',overflowY:'auto'}}><div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'1.25rem'}}><span style={{fontSize:'15px',fontWeight:'700',color:'#1e293b'}}>End Session — {showEndModal.name}</span><button onClick={()=>setShowEndModal(null)} style={{background:'#f0f2f5',border:'1px solid #e2e8f0',borderRadius:'8px',width:'30px',height:'30px',cursor:'pointer'}}>✕</button></div><div style={{background:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:'10px',padding:'12px 14px',marginBottom:'1rem'}}><div style={{fontSize:'11px',fontWeight:'700',color:'#64748b',textTransform:'uppercase',marginBottom:'2px'}}>Duration</div><div style={{fontSize:'26px',fontWeight:'800',fontVariantNumeric:'tabular-nums',color:'#1e293b'}}>{fmtTimer(elapsed)}</div><div style={{fontSize:'12px',color:'#64748b',marginTop:'2px'}}>Gaming cost: <strong>{fmtIQD(gc)}</strong></div></div><div style={{fontSize:'12px',fontWeight:'700',color:'#64748b',textTransform:'uppercase',marginBottom:'8px'}}>Add Orders</div><div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:'8px',marginBottom:'12px'}}>{menuItems.map(m=><div key={m.id} onClick={()=>addItem(m)} style={{border:'1px solid #e2e8f0',borderRadius:'10px',padding:'10px 8px',textAlign:'center',cursor:'pointer',background:'#fff'}}><div style={{fontSize:'20px',marginBottom:'4px'}}>{{drink:'🥤',food:'🍿',hookah:'💨',other:'📦'}[m.category]}</div><div style={{fontSize:'11px',color:'#1e293b',fontWeight:'600'}}>{m.name}</div><div style={{fontSize:'12px',fontWeight:'700',color:'#6366f1',marginTop:'2px'}}>{fmtIQD(m.price)}</div></div>)}</div>{endItems.length>0&&endItems.map(i=><div key={i.id} style={{display:'flex',alignItems:'center',gap:'8px',padding:'6px 8px',background:'#f8fafc',borderRadius:'8px',marginBottom:'5px'}}><span style={{flex:1,fontSize:'13px',fontWeight:'600'}}>{i.name} ×{i.quantity}</span><span style={{fontSize:'13px',fontWeight:'700'}}>{fmtIQD(i.price*i.quantity)}</span><button onClick={()=>removeEndItem(i)} style={{background:'none',border:'none',cursor:'pointer',color:'#94a3b8',fontSize:'13px'}}>✕</button></div>)}<div style={{borderTop:'1px solid #e2e8f0',paddingTop:'8px',marginBottom:'10px'}}><div style={{display:'flex',justifyContent:'space-between',padding:'5px 0',fontSize:'13px'}}><span style={{color:'#64748b'}}>Gaming</span><span style={{fontWeight:'600'}}>{fmtIQD(gc)}</span></div><div style={{display:'flex',justifyContent:'space-between',padding:'5px 0',fontSize:'13px'}}><span style={{color:'#64748b'}}>Orders</span><span style={{fontWeight:'600'}}>{fmtIQD(it)}</span></div></div><div style={{background:'#fef3c7',border:'1px solid #fde68a',borderRadius:'9px',padding:'9px 11px',marginBottom:'10px'}}><div style={{fontSize:'11px',fontWeight:'700',color:'#92400e',marginBottom:'6px'}}>Discount on gaming</div><div style={{display:'flex',alignItems:'center',gap:'8px'}}><input type="number" value={discount} onChange={e=>setDiscount(Number(e.target.value))} min="0" max="100" style={{width:'65px',padding:'5px 8px',border:'1px solid #fde68a',borderRadius:'8px',fontSize:'13px'}}/><span style={{fontSize:'12px',color:'#92400e'}}>%</span><span style={{marginLeft:'auto',fontSize:'12px',color:'#92400e',fontWeight:'700'}}>-{fmtIQD(da)}</span></div></div><div style={{display:'flex',justifyContent:'space-between',alignItems:'center',borderTop:'1px solid #e2e8f0',paddingTop:'10px',marginBottom:'1rem'}}><span style={{fontSize:'15px',fontWeight:'700',color:'#1e293b'}}>Final Total</span><span style={{fontSize:'19px',fontWeight:'800',color:'#6366f1'}}>{fmtIQD(total)}</span></div><div style={{display:'flex',gap:'8px',justifyContent:'flex-end'}}><button onClick={()=>setShowEndModal(null)} style={{padding:'6px 14px',border:'1px solid #e2e8f0',borderRadius:'8px',background:'#fff',cursor:'pointer',fontSize:'13px'}}>Cancel</button><button onClick={endSession} style={{padding:'6px 14px',background:'#6366f1',color:'#fff',border:'none',borderRadius:'8px',cursor:'pointer',fontSize:'13px',fontWeight:'600'}}>✓ End Session</button></div></div></div>
       })()}
     </div>
   )
